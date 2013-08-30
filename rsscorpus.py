@@ -9,21 +9,24 @@ def getCorpus():
     xml = fin.read()
     fin.close()
     soup = BeautifulSoup(xml)
-    entries = soup.find_all("entry")
+    entries = soup.find_all(u"entry")
     for entry in entries:
-      key = entry["id"]
-      title = entry.find("title").string
-      summary = entry.find("summary").string
-      date = entry.find("pubdate").string
-      out[key] = {"title": title,
-                  "summary": summary,
-                  "pubdate": date}      
+      try:
+        key = entry[u"id"]
+        title = entry.find(u"title").string
+        summary = entry.find(u"summary").string
+        date = entry.find(u"pubdate").string
+        out[key] = {u"title": title,
+                    u"summary": summary,  
+                    u"pubdate": date}      
+      except:
+        continue
   except IOError:
     out = {}
   return out
 
 def setCorpus(db):
-  print "setting", len(db.keys())
+  print "saving corpus", len(db.keys())
   xml = xmlify(db)
   fout = codecs.open("./corpus.xml", "w", "utf-8")
   fout.write(xml)
@@ -40,7 +43,10 @@ def xmlify(d):
   for k in d.keys():
     out.append("\t<entry id='" + k + "'>")
     for kk in d[k].keys():
-      out.append( unicode("\t\t<" + kk + ">" + d[k][kk] + "</" + kk + ">") )
+      try:
+        out.append( unicode("\t\t<" + kk + ">" + d[k][kk] + "</" + kk + ">") )
+      except:
+        continue
     out.append("\t</entry>")
   out.append("</rsscorpus>")
   return "\n".join(out)
@@ -51,27 +57,30 @@ def removeHtml(s):
 def wc(db):
   wc = 0
   for entry in db.keys():
-    wc += len(unicode(db[entry]["title"] + " " + db[entry]["summary"]).split())
+    try:
+      wc += len(unicode(db[entry][u"title"] + " " + db[entry][u"summary"]).split())
+    except:
+      continue
   return wc
 
 def main():
   db = getCorpus()
-  print len(db.keys())
+  print "there are", len(db.keys()), "rss feeds available"
   rssfeeds = getFeeds()
 
   for rssfeed in rssfeeds:
+    print "\tchecking:", rssfeed.strip()
     d = feedparser.parse(rssfeed)
-    for item in d["items"]:
-      title = removeHtml(item["title"])
-      summary = removeHtml(item["summary"])
-      pub = time.strftime("%a, %d %b %Y %H:%M:%S", item["published_parsed"])
-      uid = item["id"]
-      db[uid] = {"title": title,
-                 "summary": summary,
-                 "pubdate": pub}
-    print len(db.keys())
+    for item in d[u"items"]:
+      title = removeHtml(item[u"title"])
+      summary = removeHtml(item[u"summary"])
+      pub = time.strftime(u"%a, %d %b %Y %H:%M:%S", item[u"published_parsed"])
+      uid = item[u"id"]
+      db[uid] = {u"title": title,
+                 u"summary": summary,
+                 u"pubdate": pub}
   setCorpus(db)
-  print wc(db)
+  print "approximate word count:", wc(db)
 
 if __name__ == "__main__":
     main()
